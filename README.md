@@ -1,14 +1,14 @@
 # MetaMender
 
-**MetaMender** is a lightweight, AI-powered metadata enhancer for Jellyfin.  
-It enriches your media library by rewriting short or missing overviews for music items using OpenAI — no servers, no Docker, no complexity.
+**MetaMender** is a lightweight, AI-powered metadata enhancer for Jellyfin.
+It enriches your media library by rewriting short or missing overviews for music items using your preferred language model — no servers, no Docker, no complexity.
 
 ---
 
 ## 🎯 What It Does
 
 - Scans your Jellyfin library for albums and artists with poor or missing descriptions
-- Uses OpenAI to generate high-quality, streaming-style summaries
+- Uses your configured model to generate high-quality, streaming-style summaries
 - Automatically applies changes through the Jellyfin API
 - Keeps a full log of changes with before/after text and token usage
 - Designed to be terminal-based and lightweight
@@ -22,8 +22,8 @@ It enriches your media library by rewriting short or missing overviews for music
    - Jellyfin server URL
    - Jellyfin API key
    - Your Jellyfin user ID
-   - OpenAI API key
-3. (Optional) Specify a preferred OpenAI model or item types to target.
+   - API keys for the model provider you wish to use (OpenAI, Anthropic, Google)
+3. (Optional) Specify a preferred model or item types to target and choose a `model_provider`.
 
 > Note: `config.json` is excluded from the repo to keep your credentials secure.
 
@@ -51,7 +51,7 @@ Each run generates a timestamped log in the `logs/` folder. These logs show:
 
 ## ⚠️ Error Handling
 
-If the OpenAI API returns an error for an item, MetaMender logs a warning with
+If the API returns an error for an item, MetaMender logs a warning with
 that item's ID and skips the update. These items are counted as "skipped" in the
 final summary.
 

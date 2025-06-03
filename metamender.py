@@ -11,12 +11,29 @@ MetaMender Phase-1 — fully automatic
 
 import json, os, datetime, logging, textwrap
 import requests, openai
+
+# optional providers
+try:
+    import anthropic
+except ImportError:  # pragma: no cover - optional dependency
+    anthropic = None
+
+try:
+    import google.generativeai as genai
+except ImportError:  # pragma: no cover - optional dependency
+    genai = None
+
+try:
+    import ollama
+except ImportError:  # pragma: no cover - optional dependency
+    ollama = None
 from requests.exceptions import HTTPError
 from tqdm import tqdm
 
 # ── settings ────────────────────────────────────────────────────────────────
 MIN_LEN       = 50
 DEFAULT_MODEL = "gpt-4.1-mini"
+DEFAULT_PROVIDER = "openai"
 EXTRA_FIELDS  = (
     "Overview,Artists,Album,Genres,ParentId,OriginalTitle,"
     "ProductionYear,SortName,PremiereDate"
@@ -82,24 +99,71 @@ def prompt_for(it):
         f'Title: {title}. Year: {year}. Current: {old}'
     )
 
-def beautify(it, model):
+def beautify(it, model, provider, cfg):
     """Return rewritten overview text and token count or ``(None, 0)`` on error."""
-    try:
-        resp = openai.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system",
-                 "content": "You craft concise, engaging overviews for media items."},
-                {"role": "user", "content": prompt_for(it)}
-            ],
-            max_tokens=120,
-            temperature=0.4,   # your preferred temp
-        )
-    except openai.OpenAIError as e:  # network, quota, etc.
-        logging.warning("‼️  OpenAI error for ID %s – %s", it.get("Id"), e)
-        return None, 0
+    prompt = prompt_for(it)
+    system = "You craft concise, engaging overviews for media items."
 
-    return resp.choices[0].message.content.strip(), resp.usage.total_tokens
+    if provider == "openai":
+        try:
+            resp = openai.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=120,
+                temperature=0.4,
+            )
+        except openai.OpenAIError as e:
+            logging.warning("‼️  OpenAI error for ID %s – %s", it.get("Id"), e)
+            return None, 0
+        return resp.choices[0].message.content.strip(), resp.usage.total_tokens
+
+    if provider == "anthropic" and anthropic:
+        client = anthropic.Anthropic(api_key=cfg.get("anthropic_api_key"))
+        try:
+            resp = client.messages.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                system=system,
+                max_tokens=120,
+                temperature=0.4,
+            )
+        except Exception as e:  # network, quota, etc.
+            logging.warning("‼️  Anthropic error for ID %s – %s", it.get("Id"), e)
+            return None, 0
+        text = "".join(getattr(b, "text", "") for b in getattr(resp, "content", []))
+        tok = getattr(getattr(resp, "usage", None), "input_tokens", 0) + \
+              getattr(getattr(resp, "usage", None), "output_tokens", 0)
+        return text.strip(), tok
+
+    if provider == "google" and genai:
+        genai.configure(api_key=cfg.get("google_api_key"))
+        try:
+            model_obj = genai.GenerativeModel(model)
+            resp = model_obj.generate_content(prompt, stream=False)
+        except Exception as e:
+            logging.warning("‼️  Google error for ID %s – %s", it.get("Id"), e)
+            return None, 0
+        text = getattr(resp, "text", "").strip()
+        return text, 0
+
+    if provider == "local" and ollama:
+        try:
+            resp = ollama.Client().chat(
+                model=model,
+                messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+            )
+        except Exception as e:
+            logging.warning("‼️  Local model error for ID %s – %s", it.get("Id"), e)
+            return None, 0
+        text = resp.get("message", {}).get("content", "").strip()
+        tok = resp.get("eval_count", 0) + resp.get("prompt_eval_count", 0)
+        return text, tok
+
+    logging.error("Unknown or unsupported provider: %s", provider)
+    return None, 0
 
 # ── main ─────────────────────────────────────────────────────────────────────
 def main():
@@ -109,7 +173,8 @@ def main():
     uid  = cfg["user_id"]
     types= cfg.get("item_types") or ["MusicAlbum", "MusicArtist"]
     lib  = cfg.get("library_id")
-    model= cfg.get("openai_model", DEFAULT_MODEL)
+    model    = cfg.get("model") or cfg.get("openai_model", DEFAULT_MODEL)
+    provider = cfg.get("model_provider", DEFAULT_PROVIDER)
 
     # log file setup
     stamp    = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -119,10 +184,11 @@ def main():
                         format="%(asctime)s  %(message)s",
                         datefmt="%H:%M:%S")
 
-    logging.info("▶️  MetaMender run — model %s — types %s",
-                 model, ", ".join(types))
+    logging.info("▶️  MetaMender run — model %s via %s — types %s",
+                 model, provider, ", ".join(types))
 
-    openai.api_key = cfg["openai_api_key"]
+    if provider == "openai":
+        openai.api_key = cfg.get("openai_api_key")
 
     query = {"IncludeItemTypes": ",".join(types),
              "Recursive": "true",
@@ -139,8 +205,8 @@ def main():
 
     total_tokens = updated = skipped = 0
     for it in tqdm(targets, desc="Beautifying", unit="item"):
-        new_txt, tok = beautify(it, model)
-        if new_txt is None:           # OpenAI error
+        new_txt, tok = beautify(it, model, provider, cfg)
+        if new_txt is None:
             skipped += 1
             continue
         total_tokens += tok
