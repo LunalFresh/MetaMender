@@ -49,6 +49,14 @@ Each run generates a timestamped log in the `logs/` folder. These logs show:
 
 ---
 
+## ⚠️ Error Handling
+
+If the OpenAI API returns an error for an item, MetaMender logs a warning with
+that item's ID and skips the update. These items are counted as "skipped" in the
+final summary.
+
+---
+
 ## 🛠️ Planned Features
 
 - Support for TV shows, movies, books, and more

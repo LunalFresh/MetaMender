@@ -83,16 +83,22 @@ def prompt_for(it):
     )
 
 def beautify(it, model):
-    resp = openai.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system",
-             "content": "You craft concise, engaging overviews for media items."},
-            {"role": "user", "content": prompt_for(it)}
-        ],
-        max_tokens=120,
-        temperature=0.4,   # your preferred temp
-    )
+    """Return rewritten overview text and token count or ``(None, 0)`` on error."""
+    try:
+        resp = openai.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system",
+                 "content": "You craft concise, engaging overviews for media items."},
+                {"role": "user", "content": prompt_for(it)}
+            ],
+            max_tokens=120,
+            temperature=0.4,   # your preferred temp
+        )
+    except openai.OpenAIError as e:  # network, quota, etc.
+        logging.warning("‼️  OpenAI error for ID %s – %s", it.get("Id"), e)
+        return None, 0
+
     return resp.choices[0].message.content.strip(), resp.usage.total_tokens
 
 # ── main ─────────────────────────────────────────────────────────────────────
@@ -134,6 +140,9 @@ def main():
     total_tokens = updated = skipped = 0
     for it in tqdm(targets, desc="Beautifying", unit="item"):
         new_txt, tok = beautify(it, model)
+        if new_txt is None:           # OpenAI error
+            skipped += 1
+            continue
         total_tokens += tok
 
         if safe_update_overview(base, key, uid, it["Id"], new_txt):
