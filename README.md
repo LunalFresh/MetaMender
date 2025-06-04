@@ -29,6 +29,74 @@ It enriches your media library by rewriting short or missing overviews for music
 
 ---
 
+### 📚 Model Provider Options
+
+Set the `"model_provider"` field in your `config.json` to one of these values:
+
+| `model_provider` | Description              | Required Config Keys                   | Example `"model"`       |
+|------------------|-------------------------|----------------------------------------|-------------------------|
+| `openai`         | OpenAI API (default)    | `openai_api_key`, `model`              | `"gpt-4o"`              |
+| `anthropic`      | Anthropic Claude        | `anthropic_api_key`, `model`           | `"claude-3-haiku-20240307"` |
+| `google`         | Google Gemini           | `google_api_key`, `model`              | `"gemini-pro"`          |
+| `local`          | Ollama (local models)   | Ollama server running, `model`         | `"llama3"`, `"mistral"` |
+
+#### Example configs:
+
+**OpenAI**:
+```json
+{
+  "model_provider": "openai",
+  "openai_api_key": "sk-...",
+  "model": "gpt-4o",
+  ...
+}
+````
+
+**Anthropic**:
+
+```json
+{
+  "model_provider": "anthropic",
+  "anthropic_api_key": "sk-ant-...",
+  "model": "claude-3-haiku-20240307",
+  ...
+}
+```
+
+**Google**:
+
+```json
+{
+  "model_provider": "google",
+  "google_api_key": "AIza...",
+  "model": "gemini-pro",
+  ...
+}
+```
+
+**Local (Ollama)**:
+
+```json
+{
+  "model_provider": "local",
+  "model": "llama3",
+  ...
+}
+```
+
+> For Ollama, ensure you have the model pulled and your local Ollama server is running (`ollama serve`).
+
+---
+
+### How to Choose
+
+* **`openai`**: Use for ChatGPT models with an OpenAI API key.
+* **`anthropic`**: Use for Claude models if you have access.
+* **`google`**: Use for Gemini models with a Google API key.
+* **`local`**: Use for running LLMs on your own machine via Ollama.
+
+---
+
 ## 🧪 How to Run
 
 1. Make sure Python 3.8+ is installed.
@@ -42,10 +110,11 @@ If everything is already well-described, the app will tell you — otherwise, it
 ## 🧾 Logs
 
 Each run generates a timestamped log in the `logs/` folder. These logs show:
-- Item names and types
-- Original vs. generated overviews
-- Token usage and estimated API cost
-- Any skipped items with HTTP error codes
+
+* Item names and types
+* Original vs. generated overviews
+* Token usage and estimated API cost
+* Any skipped items with HTTP error codes
 
 ---
 
@@ -59,16 +128,16 @@ final summary.
 
 ## 🛠️ Planned Features
 
-- Support for TV shows, movies, books, and more
-- Optional manual approval before applying changes
-- Background auto-run support
-- Clean web-based UI
-- **AI-generated images for items missing artwork** (via OpenAI’s image model)
-- Token tracking and usage analytics
+* Support for TV shows, movies, books, and more
+* Optional manual approval before applying changes
+* Background auto-run support
+* Clean web-based UI
+* **AI-generated images for items missing artwork** (via OpenAI’s image model)
+* Token tracking and usage analytics
 
 ---
 
 ## 🤝 Contributions & Feedback
 
-MetaMender is built to be lightweight, hackable, and personal.  
+MetaMender is built to be lightweight, hackable, and personal.
 Suggestions, forks, and contributions are welcome.
