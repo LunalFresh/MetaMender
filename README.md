@@ -98,8 +98,12 @@ Example Grok config:
 
 ## How to Run
 
-```powershell
-python .\metamender.py
+From a terminal, set the working directory to the MetaMender installation
+directory, then start the script with the Python launcher:
+
+```cmd
+cd "C:\path\to\MetaMender"
+py metamender.py
 ```
 
 If every configured item already has a usable overview, MetaMender exits without
