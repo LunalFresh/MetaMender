@@ -1,3 +1,5 @@
-requests
-openai
-tqdm
+anthropic>=0.74.0
+chardet>=5.2,<6
+openai>=1.66.3
+requests>=2.32.3
+tqdm>=4.67.1
